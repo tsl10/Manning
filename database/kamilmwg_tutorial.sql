@@ -11,14 +11,12 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
-
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
 --
-
 -- --------------------------------------------------------
 
 --
@@ -100,14 +98,26 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `FNAME`, `LNAME`, `EMAIL`, `date_available`, `position_applied`, `PHONE_NUMBER`, `PASSWORD`, `GENDER`, `cv`) VALUES
-(1, 'Vivek', 'C', 'vivekc@gmail.com', '2025-01-02', 'Deck-Office', 293804257, 'f925916e2754e5e03f75dd58a5733251', 'male', ''),
-(2, 'abc', 'N', 'tejas@gmail.com', '2025-01-03', 'Deck-Officer', 8458205729, 'f925916e2754e5e03f75dd58a5733251', 'male', ''),
-(3, 'xyz', 'C', 'xyz@gmail.com', '2025-01-03', 'Third Office', 453897937, 'f925916e2754e5e03f75dd58a5733251', 'male', ''),
-(4, 'John', 'D', 'john@gmail.com', '2025-01-23', 'Second-Office', 2875935734, 'f925916e2754e5e03f75dd58a5733251', 'male', '6767c895e496b7.83275135.pdf');
+('?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
 
---
--- Indexes for dumped tables
---
+-- New Changes:
+-- Add new columns for password reset functionality
+ALTER TABLE `users`
+ADD COLUMN `reset_token` varchar(255) DEFAULT NULL,
+ADD COLUMN `reset_token_expiry` datetime DEFAULT NULL,
+ADD COLUMN `reset_attempts` int(11) DEFAULT 0,
+ADD COLUMN `last_reset_attempt` datetime DEFAULT NULL,
+ADD COLUMN `account_status` enum('active','inactive','locked') DEFAULT 'active',
+ADD COLUMN `last_login` datetime DEFAULT NULL,
+ADD COLUMN `failed_login_attempts` int(11) DEFAULT 0;
+
+-- Add indexes for better performance
+ALTER TABLE `users`
+ADD INDEX `idx_email` (`EMAIL`),
+ADD INDEX `idx_reset_token` (`reset_token`),
+ADD INDEX `idx_account_status` (`account_status`);
+
+-- --------------------------------------------------------
 
 --
 -- Indexes for table `passport_info`
