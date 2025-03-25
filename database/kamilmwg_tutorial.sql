@@ -103,20 +103,14 @@ INSERT INTO `users` (`user_id`, `FNAME`, `LNAME`, `EMAIL`, `date_available`, `po
 -- New Changes:
 -- Add new columns for password reset functionality
 ALTER TABLE `users`
-ADD COLUMN `reset_token` varchar(255) DEFAULT NULL,
-ADD COLUMN `reset_token_expiry` datetime DEFAULT NULL,
-ADD COLUMN `reset_attempts` int(11) DEFAULT 0,
-ADD COLUMN `last_reset_attempt` datetime DEFAULT NULL,
 ADD COLUMN `account_status` enum('active','inactive','locked') DEFAULT 'active',
-ADD COLUMN `last_login` datetime DEFAULT NULL,
-ADD COLUMN `failed_login_attempts` int(11) DEFAULT 0;
 
 -- Add indexes for better performance
 ALTER TABLE `users`
 ADD INDEX `idx_email` (`EMAIL`),
-ADD INDEX `idx_reset_token` (`reset_token`),
-ADD INDEX `idx_account_status` (`account_status`);
 
+ALTER TABLE 'users'
+ADD INDEX idx_account_status (account_status);
 -- --------------------------------------------------------
 
 --

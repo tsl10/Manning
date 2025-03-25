@@ -1,73 +1,49 @@
 <?php
 session_start();
-include 'config.php';
+require_once 'connection.php';
+require_once 'config/aws-config.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = $_POST['email'];
+    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
     
-    // Check if email exists and account is active
-    $sql = "SELECT * FROM users WHERE EMAIL = ? AND account_status = 'active'";
-    $stmt = $conn->prepare($sql);
+    // Check if email exists in database
+    $stmt = $con->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
     
     if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
+        // Generate OTP
+        $otp = rand(100000, 999999);
+        $_SESSION['reset_otp'] = $otp;
+        $_SESSION['reset_email'] = $email;
+        $_SESSION['otp_timestamp'] = time();
         
-        // Check if user has exceeded reset attempts
-        if ($user['reset_attempts'] >= 3) {
-            $last_attempt = strtotime($user['last_reset_attempt']);
-            if (time() - $last_attempt < 3600) { // 1 hour cooldown
-                $error = "Too many reset attempts. Please try again after 1 hour.";
-            } else {
-                // Reset attempts after cooldown
-                $sql = "UPDATE users SET reset_attempts = 0 WHERE user_id = ?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("i", $user['user_id']);
-                $stmt->execute();
-            }
-        }
-        
-        if (!isset($error)) {
-            // Generate OTP
-            $otp = rand(100000, 999999);
-            $token = bin2hex(random_bytes(32));
-            $expiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-            
-            // Update user record with reset token
-            $sql = "UPDATE users SET 
-                    reset_token = ?, 
-                    reset_token_expiry = ?,
-                    reset_attempts = reset_attempts + 1,
-                    last_reset_attempt = NOW()
-                    WHERE user_id = ?";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("ssi", $token, $expiry, $user['user_id']);
-            $stmt->execute();
-            
-            $_SESSION['reset_token'] = $token;
-            $_SESSION['reset_email'] = $email;
-            $_SESSION['otp_expiry'] = time() + (5 * 60); // OTP valid for 5 minutes
-            
-            // Send OTP using Postfix
-            $to = $email;
-            $subject = "Password Reset OTP";
-            $message = "Your OTP for password reset is: $otp\nThis OTP will expire in 5 minutes.";
-            $headers = "From: your-email@your-domain.com\r\n";
-            $headers .= "Reply-To: your-email@your-domain.com\r\n";
-            $headers .= "X-Mailer: PHP/" . phpversion();
-            
-            if(mail($to, $subject, $message, $headers)) {
-                header("Location: verify_otp.php");
-                exit();
-            } else {
-                error_log("Failed to send email to: " . $email);
-                $error = "Failed to send OTP. Please try again.";
-            }
+        // Send OTP via AWS SES
+        try {
+            $result = $sesClient->sendEmail([
+                'Source' => 'your-verified-email@domain.com',
+                'Destination' => [
+                    'ToAddresses' => [$email]
+                ],
+                'Message' => [
+                    'Subject' => [
+                        'Data' => 'Password Reset OTP'
+                    ],
+                    'Body' => [
+                        'Text' => [
+                            'Data' => "Your OTP for password reset is: $otp. This OTP will expire in 10 minutes."
+                        ]
+                    ]
+                ]
+            ]);
+            header("Location: verify_otp.php");
+            exit();
+        } catch (Exception $e) {
+            $error = "Failed to send OTP. Please try again.";
         }
     } else {
-        $error = "Email not found or account is inactive. Please enter a registered email address.";
+        $error = "Email address not found!";
     }
 }
 ?>
@@ -121,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <button type="submit" class="btn btn-primary">Send OTP</button>
                 </form>
                 <div class="text-center mt-3">
-                    <a href="login.php">Back to Login</a>
+                    <a href="index.php">Back to Login</a>
                 </div>
             </div>
         </div>

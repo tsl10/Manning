@@ -1,3 +1,7 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -80,27 +84,37 @@ if(isset($_POST['regs']))
                     // Allow only certain file types
                     $allowed = array('pdf', 'doc', 'docx');
                     if(in_array($cv_ext, $allowed)){
+                        // Create uploads directory if it doesn't exist
+                        if (!file_exists('uploads')) {
+                            mkdir('uploads', 0755, true);
+                        }
+
                         // Save the file in the 'uploads' folder
                         $cv_new_name = uniqid('', true) . '.' . $cv_ext;
                         $cv_dest = 'uploads/' . $cv_new_name;
+                        
+                        // Debug information
+                        error_log("Attempting to move file from: " . $cv_tmp_name . " to: " . $cv_dest);
+                        
                         if (move_uploaded_file($cv_tmp_name, $cv_dest)) {
-                          echo "File uploaded successfully!";
-                      } else {
-                          echo '<script>alert("Error moving the file.")</script>';
-                          exit;
-                      }
-                  } else {
-                      echo '<script>alert("Only PDF, DOC, or DOCX files are allowed.")</script>';
-                      exit;
-                  }
-              } else {
-                  echo '<script>alert("Error uploading file.")</script>';
-                  exit;
-              }
-          } else {
-              // If file is not uploaded, set cv_new_name to a default value (null or a placeholder)
-              $cv_new_name = null;
-          }
+                            error_log("File uploaded successfully to: " . $cv_dest);
+                        } else {
+                            error_log("Error moving file. PHP error: " . error_get_last()['message']);
+                            echo '<script>alert("Error moving the file. Please check server logs.")</script>';
+                            exit;
+                        }
+                    } else {
+                        echo '<script>alert("Only PDF, DOC, or DOCX files are allowed.")</script>';
+                        exit;
+                    }
+                } else {
+                    error_log("File upload error code: " . $cv_error);
+                    echo '<script>alert("Error uploading file. Error code: ' . $cv_error . '")</script>';
+                    exit;
+                }
+            } else {
+                $cv_new_name = null;
+            }
             $sql="insert into users (FNAME,LNAME,EMAIL,date_available,position_applied,PHONE_NUMBER,PASSWORD,GENDER,CV) 
                 values('$fname','$lname','$email', '$date_available' , '$position_applied' ,$ph,'$Pass','$gender','$cv_new_name')";
             $result = mysqli_query($con,$sql);
